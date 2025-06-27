@@ -1,0 +1,5 @@
+[macos.dock]
+autohide = false
+
+[macos.raw]
+"com.apple.dock.workspaces-auto-swoosh" = { value = 0, type = "int" }
