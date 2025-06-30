@@ -21,5 +21,15 @@ func main() {
 		return
 	}
 
-	fmt.Printf("%v", content)
+	var cfg toml.FjrdConfig
+	err = toml.ParseConfig(content, &cfg)
+	if err != nil {
+		fmt.Printf("%v", err)
+		return
+	}
+
+	if err = cfg.Execute(); err != nil {
+		fmt.Printf("%v", err)
+		return
+	}
 }
