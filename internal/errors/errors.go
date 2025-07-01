@@ -1,11 +1,10 @@
-package defaults
+package errors
 
 import (
 	"fmt"
 	"strings"
 )
 
-// ConfigurationError represents an error that occurred during configuration
 type ConfigurationError struct {
 	Component string
 	Operation string
@@ -14,7 +13,6 @@ type ConfigurationError struct {
 	Err       error
 }
 
-// Error implements the error interface
 func (e *ConfigurationError) Error() string {
 	var parts []string
 
@@ -42,12 +40,10 @@ func (e *ConfigurationError) Error() string {
 	return fmt.Sprintf("configuration error: %v", e.Err)
 }
 
-// Unwrap returns the underlying error
 func (e *ConfigurationError) Unwrap() error {
 	return e.Err
 }
 
-// NewConfigurationError creates a new configuration error
 func NewConfigurationError(component, operation, field string, value interface{}, err error) *ConfigurationError {
 	return &ConfigurationError{
 		Component: component,
@@ -58,7 +54,6 @@ func NewConfigurationError(component, operation, field string, value interface{}
 	}
 }
 
-// ValidationError represents a validation failure
 type ValidationError struct {
 	Field    string
 	Value    interface{}
@@ -66,7 +61,6 @@ type ValidationError struct {
 	Err      error
 }
 
-// Error implements the error interface
 func (e *ValidationError) Error() string {
 	if e.Expected != "" {
 		return fmt.Sprintf("validation error for field %s (value: %v, expected: %s): %v",
@@ -76,12 +70,10 @@ func (e *ValidationError) Error() string {
 		e.Field, e.Value, e.Err)
 }
 
-// Unwrap returns the underlying error
 func (e *ValidationError) Unwrap() error {
 	return e.Err
 }
 
-// NewValidationError creates a new validation error
 func NewValidationError(field string, value interface{}, expected string, err error) *ValidationError {
 	return &ValidationError{
 		Field:    field,
@@ -91,14 +83,12 @@ func NewValidationError(field string, value interface{}, expected string, err er
 	}
 }
 
-// ExecutionError represents an execution failure
 type ExecutionError struct {
 	Command   string
 	Arguments []string
 	Err       error
 }
 
-// Error implements the error interface
 func (e *ExecutionError) Error() string {
 	if len(e.Arguments) > 0 {
 		return fmt.Sprintf("execution error for command '%s %s': %v",
@@ -107,12 +97,10 @@ func (e *ExecutionError) Error() string {
 	return fmt.Sprintf("execution error for command '%s': %v", e.Command, e.Err)
 }
 
-// Unwrap returns the underlying error
 func (e *ExecutionError) Unwrap() error {
 	return e.Err
 }
 
-// NewExecutionError creates a new execution error
 func NewExecutionError(command string, arguments []string, err error) *ExecutionError {
 	return &ExecutionError{
 		Command:   command,

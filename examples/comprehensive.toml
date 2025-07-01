@@ -1,0 +1,19 @@
+version = 1
+
+[macos.dock]
+autohide = true
+orientation = "left"
+tilesize = 48
+autohide-time-modifier = 0.5
+autohide-delay = 0.2
+show-recents = false
+mineffect = "scale"
+static-only = false
+scroll-to-open = true
+
+[macos.defaultsRaw]
+"com.apple.dock.workspaces-auto-swoosh" = { value = 0, type = "int" }
+"com.apple.dock.expose-animation-duration" = { value = 0.1, type = "float" }
+"com.apple.dock.launchanim" = { value = false, type = "bool" }
+"com.apple.dock.persistent-apps" = { value = "[]", type = "string" }
+"com.apple.dock.minimize-to-application" = { value = true, type = "bool" }

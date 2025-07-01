@@ -5,29 +5,37 @@ import (
 	"strconv"
 )
 
-// Value represents a typed value that can be converted to defaults command format
+type ValueType string
+
+const (
+	BoolType   ValueType = "-bool"
+	StringType ValueType = "-string"
+	IntType    ValueType = "-int"
+	FloatType  ValueType = "-float"
+)
+
 type Value interface {
 	Type() ValueType
 	String() string
 	Validate() error
 }
 
-// BoolValue represents a boolean value
+type ResetValue interface {
+	IsReset() bool
+}
+
 type BoolValue struct {
 	Value bool
 }
 
-// NewBoolValue creates a new boolean value
 func NewBoolValue(value bool) *BoolValue {
 	return &BoolValue{Value: value}
 }
 
-// Type returns the value type
 func (b *BoolValue) Type() ValueType {
 	return BoolType
 }
 
-// String returns the string representation
 func (b *BoolValue) String() string {
 	if b.Value {
 		return "true"
@@ -35,45 +43,48 @@ func (b *BoolValue) String() string {
 	return "false"
 }
 
-// Validate validates the boolean value
 func (b *BoolValue) Validate() error {
-	return nil // Boolean values are always valid
+	return nil
 }
 
-// StringValue represents a string value
 type StringValue struct {
 	Value string
+	Reset bool
 }
 
-// NewStringValue creates a new string value
 func NewStringValue(value string) *StringValue {
-	return &StringValue{Value: value}
+	if value == "default" {
+		return &StringValue{Value: "", Reset: true}
+	}
+	return &StringValue{Value: value, Reset: false}
 }
 
-// Type returns the value type
 func (s *StringValue) Type() ValueType {
 	return StringType
 }
 
-// String returns the string representation
 func (s *StringValue) String() string {
+	if s.Reset {
+		return "default"
+	}
 	return s.Value
 }
 
-// Validate validates the string value
+func (s *StringValue) IsReset() bool {
+	return s.Reset
+}
+
 func (s *StringValue) Validate() error {
-	if s.Value == "" {
+	if !s.Reset && s.Value == "" {
 		return fmt.Errorf("string value cannot be empty")
 	}
 	return nil
 }
 
-// IntValue represents an integer value
 type IntValue struct {
 	Value int64
 }
 
-// NewIntValue creates a new integer value
 func NewIntValue(value interface{}) (*IntValue, error) {
 	var intVal int64
 	
@@ -97,7 +108,7 @@ func NewIntValue(value interface{}) (*IntValue, error) {
 	case uint32:
 		intVal = int64(v)
 	case uint64:
-		if v > 9223372036854775807 { // max int64
+		if v > 9223372036854775807 {
 			return nil, fmt.Errorf("value %d is too large for int64", v)
 		}
 		intVal = int64(v)
@@ -108,33 +119,27 @@ func NewIntValue(value interface{}) (*IntValue, error) {
 	return &IntValue{Value: intVal}, nil
 }
 
-// Type returns the value type
 func (i *IntValue) Type() ValueType {
 	return IntType
 }
 
-// String returns the string representation
 func (i *IntValue) String() string {
 	return strconv.FormatInt(i.Value, 10)
 }
 
-// Validate validates the integer value
 func (i *IntValue) Validate() error {
-	return nil // All int64 values are valid
+	return nil
 }
 
-// FloatValue represents a floating-point value
 type FloatValue struct {
 	Value    float64
 	Precision int
 }
 
-// NewFloatValue creates a new float value with default precision
 func NewFloatValue(value interface{}) (*FloatValue, error) {
 	return NewFloatValueWithPrecision(value, 2)
 }
 
-// NewFloatValueWithPrecision creates a new float value with specified precision
 func NewFloatValueWithPrecision(value interface{}, precision int) (*FloatValue, error) {
 	var floatVal float64
 	
@@ -164,28 +169,23 @@ func NewFloatValueWithPrecision(value interface{}, precision int) (*FloatValue, 
 	return &FloatValue{Value: floatVal, Precision: precision}, nil
 }
 
-// Type returns the value type
 func (f *FloatValue) Type() ValueType {
 	return FloatType
 }
 
-// String returns the string representation
 func (f *FloatValue) String() string {
 	return strconv.FormatFloat(f.Value, 'f', f.Precision, 64)
 }
 
-// Validate validates the float value
 func (f *FloatValue) Validate() error {
-	return nil // All float64 values are valid
+	return nil
 }
 
-// EnumValue represents an enumerated string value with validation
 type EnumValue struct {
 	Value         string
 	AllowedValues []string
 }
 
-// NewEnumValue creates a new enum value
 func NewEnumValue(value string, allowedValues []string) *EnumValue {
 	return &EnumValue{
 		Value:         value,
@@ -193,17 +193,14 @@ func NewEnumValue(value string, allowedValues []string) *EnumValue {
 	}
 }
 
-// Type returns the value type
 func (e *EnumValue) Type() ValueType {
 	return StringType
 }
 
-// String returns the string representation
 func (e *EnumValue) String() string {
 	return e.Value
 }
 
-// Validate validates the enum value
 func (e *EnumValue) Validate() error {
 	for _, allowed := range e.AllowedValues {
 		if e.Value == allowed {
@@ -213,15 +210,12 @@ func (e *EnumValue) Validate() error {
 	return fmt.Errorf("value %q is not allowed, must be one of: %v", e.Value, e.AllowedValues)
 }
 
-// ValueFactory helps create values from interface{} types
 type ValueFactory struct{}
 
-// NewValueFactory creates a new value factory
 func NewValueFactory() *ValueFactory {
 	return &ValueFactory{}
 }
 
-// CreateValue creates a Value from an interface{} and type specification
 func (f *ValueFactory) CreateValue(value interface{}, valueType ValueType) (Value, error) {
 	switch valueType {
 	case BoolType:
@@ -245,4 +239,23 @@ func (f *ValueFactory) CreateValue(value interface{}, valueType ValueType) (Valu
 	default:
 		return nil, fmt.Errorf("unsupported value type: %s", valueType)
 	}
+}
+
+func (f *ValueFactory) CreateValueWithReset(value interface{}, valueType ValueType, isNull bool) (Value, error) {
+	if isNull {
+		switch valueType {
+		case BoolType:
+			return NewResetBoolValue(), nil
+		case StringType:
+			return NewResetStringValue(), nil
+		case IntType:
+			return NewResetIntValue(), nil
+		case FloatType:
+			return NewResetFloatValue(), nil
+		default:
+			return nil, fmt.Errorf("unsupported value type for reset: %s", valueType)
+		}
+	}
+
+	return f.CreateValue(value, valueType)
 }

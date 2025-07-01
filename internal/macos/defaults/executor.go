@@ -1,74 +1,86 @@
 package defaults
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
+	"strings"
+
+	"github.com/RATIU5/fjrd/internal/errors"
 )
 
-// Executor handles macOS defaults command execution
 type Executor interface {
-	Execute() error
+	Execute(ctx context.Context) error
 }
 
-// CommandExecutor handles the execution of defaults commands
 type CommandExecutor struct {
 	domain string
 }
 
-// NewCommandExecutor creates a new executor for a specific domain
 func NewCommandExecutor(domain string) *CommandExecutor {
 	return &CommandExecutor{domain: domain}
 }
 
-// ValueType represents the type of value being set
-type ValueType string
-
-const (
-	BoolType   ValueType = "-bool"
-	StringType ValueType = "-string"
-	IntType    ValueType = "-int"
-	FloatType  ValueType = "-float"
-)
-
-// Command represents a defaults write command
 type Command struct {
 	Domain string
 	Key    string
 	Value  Value
 }
 
-// Execute runs the defaults command
-func (c *Command) Execute() error {
+func (c *Command) Execute(ctx context.Context, log interface{ Info(string, ...any); Debug(string, ...any) }) error {
 	if err := c.Value.Validate(); err != nil {
-		return NewValidationError(c.Key, c.Value, "", err)
+		return errors.NewValidationError(c.Key, c.Value, "", err)
+	}
+
+	if resetter, ok := c.Value.(ResetValue); ok && resetter.IsReset() {
+		return c.executeReset(ctx, log)
 	}
 
 	args := []string{"write", c.Domain, c.Key, string(c.Value.Type()), c.Value.String()}
-	cmd := exec.Command("defaults", args...)
+	cmd := exec.CommandContext(ctx, "defaults", args...)
+	
+	log.Info("Executing defaults command", 
+		"domain", c.Domain, 
+		"key", c.Key, 
+		"type", string(c.Value.Type()), 
+		"value", c.Value.String(),
+		"command", fmt.Sprintf("defaults %s", strings.Join(args, " ")))
+	
 	if err := cmd.Run(); err != nil {
-		return NewExecutionError("defaults", args, err)
+		return errors.NewExecutionError("defaults", args, err)
 	}
 
 	return nil
 }
 
+func (c *Command) executeReset(ctx context.Context, log interface{ Info(string, ...any); Debug(string, ...any) }) error {
+	args := []string{"delete", c.Domain, c.Key}
+	cmd := exec.CommandContext(ctx, "defaults", args...)
+	
+	log.Info("Resetting default to system value", 
+		"domain", c.Domain, 
+		"key", c.Key,
+		"command", fmt.Sprintf("defaults %s", strings.Join(args, " ")))
+	
+	if err := cmd.Run(); err != nil {
+		log.Debug("Reset failed (key may not exist)", "error", err)
+	}
 
-// BatchExecutor executes multiple commands in sequence
+	return nil
+}
+
 type BatchExecutor struct {
 	commands []Command
 }
 
-// NewBatchExecutor creates a new batch executor
 func NewBatchExecutor() *BatchExecutor {
 	return &BatchExecutor{commands: make([]Command, 0)}
 }
 
-// AddCommand adds a command to the batch
 func (b *BatchExecutor) AddCommand(cmd Command) {
 	b.commands = append(b.commands, cmd)
 }
 
-// AddBool adds a boolean command to the batch
 func (b *BatchExecutor) AddBool(domain, key string, value bool) {
 	b.AddCommand(Command{
 		Domain: domain,
@@ -77,7 +89,6 @@ func (b *BatchExecutor) AddBool(domain, key string, value bool) {
 	})
 }
 
-// AddString adds a string command to the batch
 func (b *BatchExecutor) AddString(domain, key string, value string) {
 	b.AddCommand(Command{
 		Domain: domain,
@@ -86,7 +97,6 @@ func (b *BatchExecutor) AddString(domain, key string, value string) {
 	})
 }
 
-// AddInt adds an integer command to the batch
 func (b *BatchExecutor) AddInt(domain, key string, value interface{}) error {
 	intValue, err := NewIntValue(value)
 	if err != nil {
@@ -100,7 +110,6 @@ func (b *BatchExecutor) AddInt(domain, key string, value interface{}) error {
 	return nil
 }
 
-// AddFloat adds a float command to the batch
 func (b *BatchExecutor) AddFloat(domain, key string, value interface{}) error {
 	floatValue, err := NewFloatValue(value)
 	if err != nil {
@@ -114,32 +123,28 @@ func (b *BatchExecutor) AddFloat(domain, key string, value interface{}) error {
 	return nil
 }
 
-// Execute runs all commands in the batch
-func (b *BatchExecutor) Execute() error {
+func (b *BatchExecutor) Execute(ctx context.Context, log interface{ Info(string, ...any); Debug(string, ...any) }) error {
 	for _, cmd := range b.commands {
-		if err := cmd.Execute(); err != nil {
+		if err := cmd.Execute(ctx, log); err != nil {
 			return fmt.Errorf("batch execution failed: %w", err)
 		}
 	}
 	return nil
 }
 
-// KillallExecutor executes a killall command to restart applications
 type KillallExecutor struct {
 	processName string
 }
 
-// NewKillallExecutor creates a new killall executor
 func NewKillallExecutor(processName string) *KillallExecutor {
 	return &KillallExecutor{processName: processName}
 }
 
-// Execute runs the killall command
-func (k *KillallExecutor) Execute() error {
+func (k *KillallExecutor) Execute(ctx context.Context) error {
 	args := []string{k.processName}
-	cmd := exec.Command("killall", args...)
+	cmd := exec.CommandContext(ctx, "killall", args...)
 	if err := cmd.Run(); err != nil {
-		return NewExecutionError("killall", args, err)
+		return errors.NewExecutionError("killall", args, err)
 	}
 	return nil
 }

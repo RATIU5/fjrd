@@ -1,6 +1,7 @@
-package toml
+package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -89,29 +90,34 @@ func getLocalTomlFile(path string) (string, error) {
 	return string(body), nil
 }
 
-func getNetworkTomlResource(path string) (string, error) {
+func getNetworkTomlResource(ctx context.Context, path string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) (string, error) {
 	u, err := url.Parse(path)
 	if err != nil {
 		return "", errors.New("failed to parse url")
 	}
 
 	if u.Scheme == "https" && isGitHubBlobURL(path) {
+		log.Debug("Converting GitHub blob URL to raw", "original", path)
 		rawURL := convertGitHubBlobToRaw(path)
 		if rawURL != "" {
-			return getHTTPSTomlResource(rawURL)
+			log.Debug("Converted to raw URL", "raw_url", rawURL)
+			return getHTTPSTomlResource(ctx, rawURL, log)
 		}
 	}
 
 	if isGitRepoPath(path) {
-		return getGitTomlResource(path)
+		log.Debug("Processing as Git repository path", "path", path)
+		return getGitTomlResource(ctx, path, log)
 	}
 
 	if u.Scheme == "https" {
-		return getHTTPSTomlResource(path)
+		log.Debug("Processing as HTTPS URL", "url", path)
+		return getHTTPSTomlResource(ctx, path, log)
 	}
 
 	if u.Scheme == "git" {
-		return getGitTomlResource(path)
+		log.Debug("Processing as Git URL", "url", path)
+		return getGitTomlResource(ctx, path, log)
 	}
 
 	if u.Scheme != "" && u.Scheme != "https" && u.Scheme != "git" {
@@ -121,7 +127,7 @@ func getNetworkTomlResource(path string) (string, error) {
 	return "", errors.New("failed to retrieve the network resource contents")
 }
 
-func getHTTPSTomlResource(urlStr string) (string, error) {
+func getHTTPSTomlResource(ctx context.Context, urlStr string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) (string, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -135,12 +141,20 @@ func getHTTPSTomlResource(urlStr string) (string, error) {
 		},
 	}
 
-	resp, err := client.Get(urlStr)
+	log.Debug("Creating HTTP request", "url", urlStr)
+	req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	log.Debug("Sending HTTP request")
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", errors.New("failed to fetch network resource")
 	}
 	defer resp.Body.Close()
 
+	log.Debug("Received HTTP response", "status", resp.StatusCode, "content_length", resp.ContentLength)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return "", errors.New("received non-200 status from network resource")
 	}
@@ -166,19 +180,15 @@ func isGitRepoPath(path string) bool {
 		return true
 	}
 
-	// Check for full GitHub URLs
 	if strings.HasPrefix(path, "https://github.com/") {
 		return true
 	}
 
-	// Check for owner/repo patterns (but not if it's a file path with extension at the end)
 	if strings.Contains(path, "/") {
 		parts := strings.Split(path, "/")
-		// Simple owner/repo format without file extension at the end
 		if len(parts) == 2 && parts[0] != "" && parts[1] != "" && !strings.Contains(parts[1], ".") {
 			return true
 		}
-		// Extended repo path
 		if len(parts) >= 4 && parts[0] != "" && parts[1] != "" {
 			return true
 		}
@@ -220,44 +230,51 @@ func convertGitHubBlobToRaw(urlStr string) string {
 	return fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/%s", owner, repo, commit, filePath)
 }
 
-func getGitTomlResource(path string) (string, error) {
-	gitPath := parseGitPath(path)
+func getGitTomlResource(ctx context.Context, path string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) (string, error) {
+	log.Debug("Parsing Git path", "path", path)
+	gitPath := parseGitPath(ctx, path, log)
 	if gitPath == "" {
 		return "", errors.New("invalid git repository path")
 	}
 
-	// For simple owner/repo paths, the git ls-remote check is done in parseGitPath
-	// Skip the check here if gitPath already includes the file path
+	log.Debug("Resolved Git path", "git_path", gitPath)
+
 	if !strings.Contains(gitPath, "/") || len(strings.Split(gitPath, "/")) <= 2 {
-		cmd := exec.Command("git", "ls-remote", "--exit-code", "https://github.com/"+strings.Join(strings.Split(gitPath, "/")[:2], "/"))
+		repoURL := "https://github.com/" + strings.Join(strings.Split(gitPath, "/")[:2], "/")
+		log.Debug("Verifying repository exists", "repo_url", repoURL)
+		cmd := exec.CommandContext(ctx, "git", "ls-remote", "--exit-code", repoURL)
 		_, err := cmd.Output()
 		if err != nil {
 			return "", errors.New("git repository not found or not accessible")
 		}
+		log.Debug("Repository verified")
 	}
 
 	rawURL := "https://raw.githubusercontent.com/" + gitPath
-	return getHTTPSTomlResource(rawURL)
+	log.Debug("Fetching from raw GitHub URL", "raw_url", rawURL)
+	return getHTTPSTomlResource(ctx, rawURL, log)
 }
 
-func getDefaultBranch(owner, repo string) string {
-	// Try common branch names in order
+func getDefaultBranch(ctx context.Context, owner, repo string) string {
 	branches := []string{"main", "master", "develop", "dev"}
 
 	for _, branch := range branches {
-		cmd := exec.Command("git", "ls-remote", fmt.Sprintf("https://github.com/%s/%s", owner, repo), branch)
+		cmd := exec.CommandContext(ctx, "git", "ls-remote", fmt.Sprintf("https://github.com/%s/%s", owner, repo), branch)
 		output, err := cmd.Output()
 		if err == nil && len(output) > 0 {
 			return branch
 		}
 	}
 
-	// Fallback: try to get the default branch from GitHub API (without auth)
-	resp, err := http.Get(fmt.Sprintf("https://api.github.com/repos/%s/%s", owner, repo))
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://api.github.com/repos/%s/%s", owner, repo), nil)
+	if err != nil {
+		return ""
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode == 200 {
-			// Simple parsing - look for "default_branch" in JSON response
 			body, err := io.ReadAll(resp.Body)
 			if err == nil {
 				bodyStr := string(body)
@@ -275,7 +292,7 @@ func getDefaultBranch(owner, repo string) string {
 	return ""
 }
 
-func parseGitPath(path string) string {
+func parseGitPath(ctx context.Context, path string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) string {
 	cleanPath := strings.TrimPrefix(path, "git://")
 	cleanPath = strings.TrimPrefix(cleanPath, "https://")
 	cleanPath = strings.TrimPrefix(cleanPath, "github.com/")
@@ -290,10 +307,12 @@ func parseGitPath(path string) string {
 	repo := parts[1]
 
 	if len(parts) == 2 {
-		defaultBranch := getDefaultBranch(owner, repo)
+		log.Debug("Searching for config file in repository", "owner", owner, "repo", repo)
+		defaultBranch := getDefaultBranch(ctx, owner, repo)
 		if defaultBranch == "" {
 			defaultBranch = "main"
 		}
+		log.Debug("Using default branch", "branch", defaultBranch)
 
 		commonFiles := []string{"fjrd.config.toml", "fjrd.toml", "config.toml"}
 		searchPaths := []string{"", "fjrd/", ".fjrd/", "config/"}
@@ -301,16 +320,26 @@ func parseGitPath(path string) string {
 		for _, searchPath := range searchPaths {
 			for _, file := range commonFiles {
 				testURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/%s%s", owner, repo, defaultBranch, searchPath, file)
-				resp, err := http.Head(testURL)
+				log.Debug("Testing config file location", "url", testURL)
+				
+				req, err := http.NewRequestWithContext(ctx, "HEAD", testURL, nil)
+				if err != nil {
+					continue
+				}
+
+				resp, err := http.DefaultClient.Do(req)
 				if err == nil && resp.StatusCode == 200 {
 					resp.Body.Close()
-					return fmt.Sprintf("%s/%s/%s/%s%s", owner, repo, defaultBranch, searchPath, file)
+					foundPath := fmt.Sprintf("%s/%s/%s/%s%s", owner, repo, defaultBranch, searchPath, file)
+					log.Info("Found config file", "path", foundPath)
+					return foundPath
 				}
 				if resp != nil {
 					resp.Body.Close()
 				}
 			}
 		}
+		log.Warn("No config file found in repository")
 		return ""
 	}
 
@@ -328,20 +357,46 @@ func parseGitPath(path string) string {
 	return ""
 }
 
-func ResolveTomlResource(location string) (string, error) {
+func LoadConfig(ctx context.Context, location string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) (*FjrdConfig, error) {
+	log.Info("Loading configuration", "location", location)
+	
+	pathType := determinePathType(location)
+	log.Debug("Determined path type", "type", pathType.String(), "location", location)
+	
+	content, err := resolveTomlResource(ctx, location, log)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve config location: %w", err)
+	}
+
+	log.Debug("Configuration content loaded", "size", len(content))
+
+	var cfg FjrdConfig
+	if err := parseConfig(content, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	log.Info("Configuration parsed successfully", "version", cfg.Version)
+	return &cfg, nil
+}
+
+func resolveTomlResource(ctx context.Context, location string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) (string, error) {
 	pathType := determinePathType(location)
 	switch pathType {
 	case PathTypeLocal:
+		log.Debug("Reading local file", "path", location)
 		tomlBody, err := getLocalTomlFile(location)
 		if err != nil {
 			return "", errors.New("failed to read local toml file")
 		}
+		log.Debug("Local file read successfully", "size", len(tomlBody))
 		return tomlBody, nil
 	case PathTypeNetwork:
-		tomlBody, err := getNetworkTomlResource(location)
+		log.Info("Fetching remote configuration", "url", location)
+		tomlBody, err := getNetworkTomlResource(ctx, location, log)
 		if err != nil {
 			return "", errors.New("failed to read remote toml file")
 		}
+		log.Info("Remote configuration fetched successfully", "size", len(tomlBody))
 		return tomlBody, nil
 	case PathTypeNonExistent:
 		return "", errors.New("failed to read location path")
@@ -350,7 +405,7 @@ func ResolveTomlResource(location string) (string, error) {
 	}
 }
 
-func ParseConfig(content string, cfg *FjrdConfig) error {
+func parseConfig(content string, cfg *FjrdConfig) error {
 	err := goToml.Unmarshal([]byte(content), &cfg)
 	if err != nil {
 		return err

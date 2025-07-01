@@ -1,4 +1,4 @@
-package toml
+package config
 
 import "fmt"
 
@@ -18,7 +18,7 @@ func (v Version) Validate() error {
 }
 
 func (v Version) IsSupported() bool {
-	return v.Validate() != nil
+	return v.Validate() == nil
 }
 
 func (v Version) String() string {
