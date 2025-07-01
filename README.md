@@ -1,5 +1,8 @@
 # fjrd
 
+> [!CAUTION]
+> This project is still a work in progress and has not hit beta status yet
+
 A macOS configuration management tool that applies system settings via TOML configuration files.
 
 ## Features
