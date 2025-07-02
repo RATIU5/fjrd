@@ -9,12 +9,14 @@ import (
 	"github.com/RATIU5/fjrd/internal/macos/desktop"
 	"github.com/RATIU5/fjrd/internal/macos/dock"
 	"github.com/RATIU5/fjrd/internal/macos/finder"
+	"github.com/RATIU5/fjrd/internal/macos/safari"
 )
 
 type MacosConfig struct {
 	Dock        dock.Config    `toml:"dock"`
 	Finder      finder.Config  `toml:"finder"`
 	Desktop     desktop.Config `toml:"desktop"`
+	Safari      safari.Config  `toml:"safari"`
 	DefaultsRaw defaults.Raw   `toml:"defaultsRaw"`
 }
 
@@ -63,6 +65,9 @@ func (c *MacosConfig) Validate() error {
 	if err := c.Desktop.Validate(); err != nil {
 		return err
 	}
+	if err := c.Safari.Validate(); err != nil {
+		return err
+	}
 	if err := c.DefaultsRaw.Validate(); err != nil {
 		return err
 	}
@@ -99,6 +104,11 @@ func (c *MacosConfig) Execute(ctx context.Context, log interface {
 	log.Info("Applying desktop configuration")
 	if err := c.Finder.Execute(ctx, log); err != nil {
 		return fmt.Errorf("failed to execute desktop configuration: %w", err)
+	}
+
+	log.Info("Applying safari configuration")
+	if err := c.Safari.Execute(ctx, log); err != nil {
+		return fmt.Errorf("failed to execute safari configuration: %w", err)
 	}
 
 	log.Info("Applying raw defaults")
