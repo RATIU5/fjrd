@@ -68,7 +68,11 @@ func (d *Config) String() string {
 	return fmt.Sprintf("Dock{%s}", strings.Join(parts, ", "))
 }
 
-func (d *Config) Execute(ctx context.Context, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) error {
+func (d *Config) Execute(ctx context.Context, log interface {
+	Info(string, ...any)
+	Debug(string, ...any)
+	Warn(string, ...any)
+}) error {
 	log.Debug("Configuring dock settings")
 	batch := defaults.NewBatchExecutor()
 	const dockDomain = "com.apple.dock"
@@ -130,7 +134,7 @@ func (d *Config) Execute(ctx context.Context, log interface{ Info(string, ...any
 		return fmt.Errorf("failed to execute dock configuration: %w", err)
 	}
 
-	log.Debug("Restarting Dock to apply changes")
+	log.Debug("Restarting dock to apply changes")
 	killall := defaults.NewKillallExecutor("Dock")
 	if err := killall.Execute(ctx); err != nil {
 		return fmt.Errorf("failed to restart dock: %w", err)

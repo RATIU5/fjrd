@@ -10,14 +10,16 @@ import (
 	"github.com/RATIU5/fjrd/internal/macos/dock"
 	"github.com/RATIU5/fjrd/internal/macos/finder"
 	"github.com/RATIU5/fjrd/internal/macos/safari"
+	"github.com/RATIU5/fjrd/internal/macos/screenshots"
 )
 
 type MacosConfig struct {
-	Dock        dock.Config    `toml:"dock"`
-	Finder      finder.Config  `toml:"finder"`
-	Desktop     desktop.Config `toml:"desktop"`
-	Safari      safari.Config  `toml:"safari"`
-	DefaultsRaw defaults.Raw   `toml:"defaultsRaw"`
+	Dock        dock.Config        `toml:"dock"`
+	Finder      finder.Config      `toml:"finder"`
+	Desktop     desktop.Config     `toml:"desktop"`
+	Safari      safari.Config      `toml:"safari"`
+	Screenshots screenshots.Config `toml:"screenshots"`
+	DefaultsRaw defaults.Raw       `toml:"defaultsRaw"`
 }
 
 type FjrdConfig struct {
@@ -68,6 +70,9 @@ func (c *MacosConfig) Validate() error {
 	if err := c.Safari.Validate(); err != nil {
 		return err
 	}
+	if err := c.Screenshots.Validate(); err != nil {
+		return err
+	}
 	if err := c.DefaultsRaw.Validate(); err != nil {
 		return err
 	}
@@ -109,6 +114,11 @@ func (c *MacosConfig) Execute(ctx context.Context, log interface {
 	log.Info("Applying safari configuration")
 	if err := c.Safari.Execute(ctx, log); err != nil {
 		return fmt.Errorf("failed to execute safari configuration: %w", err)
+	}
+
+	log.Info("Applying screenshots configuration")
+	if err := c.Screenshots.Execute(ctx, log); err != nil {
+		return fmt.Errorf("failed to execute screenshots configuration: %w", err)
 	}
 
 	log.Info("Applying raw defaults")
