@@ -6,14 +6,16 @@ import (
 	"strings"
 
 	"github.com/RATIU5/fjrd/internal/macos/defaults"
+	"github.com/RATIU5/fjrd/internal/macos/desktop"
 	"github.com/RATIU5/fjrd/internal/macos/dock"
 	"github.com/RATIU5/fjrd/internal/macos/finder"
 )
 
 type MacosConfig struct {
-	Dock        dock.Config   `toml:"dock"`
-	Finder      finder.Config `toml:"finder"`
-	DefaultsRaw defaults.Raw  `toml:"defaultsRaw"`
+	Dock        dock.Config    `toml:"dock"`
+	Finder      finder.Config  `toml:"finder"`
+	Desktop     desktop.Config `toml:"desktop"`
+	DefaultsRaw defaults.Raw   `toml:"defaultsRaw"`
 }
 
 type FjrdConfig struct {
@@ -58,6 +60,9 @@ func (c *MacosConfig) Validate() error {
 	if err := c.Finder.Validate(); err != nil {
 		return err
 	}
+	if err := c.Desktop.Validate(); err != nil {
+		return err
+	}
 	if err := c.DefaultsRaw.Validate(); err != nil {
 		return err
 	}
@@ -86,9 +91,14 @@ func (c *MacosConfig) Execute(ctx context.Context, log interface {
 		return fmt.Errorf("failed to execute dock configuration: %w", err)
 	}
 
-	log.Info("Applying Finder configuration")
+	log.Info("Applying finder configuration")
 	if err := c.Finder.Execute(ctx, log); err != nil {
 		return fmt.Errorf("failed to execute finder configuration: %w", err)
+	}
+
+	log.Info("Applying desktop configuration")
+	if err := c.Finder.Execute(ctx, log); err != nil {
+		return fmt.Errorf("failed to execute desktop configuration: %w", err)
 	}
 
 	log.Info("Applying raw defaults")

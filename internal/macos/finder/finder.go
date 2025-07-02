@@ -9,19 +9,19 @@ import (
 )
 
 type Config struct {
-	ShowAllExtensions             *bool               `toml:"show-all-extensions",omitempty`
-	ShowAllFiles                  *bool               `toml:"show-all-files",omitempty`
-	ShowPathBar                   *bool               `toml:"show-path-bar",omitempty`
-	PreferredViewStyle            *PreferredViewStyle `toml:"preferred-view-style",omitmepty`
-	SortFoldersFirst              *bool               `toml:"sort-folders-first",omitempty`
-	FinderSpawnTab                *bool               `toml:"finder-spawn-tab",omitempty`
-	DefaultSearchScope            *DefaultSearchScope `toml:"default-search-scope",omitempty`
-	RemoveOldTrashItems           *bool               `toml:"remove-old-trash-items",omitempty`
-	ShowExtensionChangeWarning    *bool               `toml:"show-extension-change-warning",omitempty`
-	SaveNewDocsToCloud            *bool               `toml:"save-new-docs-to-cloud",omitempty`
-	ShowWindowTitlebarIcons       *bool               `toml:"show-window-titlebar-icons",omitempty`
-	ToolbarTitleViewRolloverDelay *float32            `toml:"toolbar-title-view-rollover-delay",omitempty`
-	TableViewDefaultSizeMode      *int16              `toml:"table-view-default-size-mode",omitempty`
+	ShowAllExtensions             *bool               `toml:"show-all-extensions,omitempty"`
+	ShowAllFiles                  *bool               `toml:"show-all-files,omitempty"`
+	ShowPathBar                   *bool               `toml:"show-path-bar,omitempty"`
+	PreferredViewStyle            *PreferredViewStyle `toml:"preferred-view-style,omitmepty"`
+	SortFoldersFirst              *bool               `toml:"sort-folders-first,omitempty"`
+	FinderSpawnTab                *bool               `toml:"finder-spawn-tab,omitempty"`
+	DefaultSearchScope            *DefaultSearchScope `toml:"default-search-scope,omitempty"`
+	RemoveOldTrashItems           *bool               `toml:"remove-old-trash-items,omitempty"`
+	ShowExtensionChangeWarning    *bool               `toml:"show-extension-change-warning,omitempty"`
+	SaveNewDocsToCloud            *bool               `toml:"save-new-docs-to-cloud,omitempty"`
+	ShowWindowTitlebarIcons       *bool               `toml:"show-window-titlebar-icons,omitempty"`
+	ToolbarTitleViewRolloverDelay *float32            `toml:"toolbar-title-view-rollover-delay,omitempty"`
+	TableViewDefaultSizeMode      *int16              `toml:"table-view-default-size-mode,omitempty"`
 }
 
 func (f *Config) Validate() error {
