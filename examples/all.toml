@@ -44,5 +44,13 @@ show-external-hard-drives = true
 show-removable-media = true
 show-mounted-servers = false
 
+[macos.menubar]
+clock-flash-date-separators = false
+clock-date-format = "EEE d MMM HH:mm"
+
+[macos.mouse]
+accelerate = true
+speed = 1
+
 [macos.defaultsRaw]
 "com.apple.Music.userWantsPlaybackNotifications" = { value = true, type = "bool" }
