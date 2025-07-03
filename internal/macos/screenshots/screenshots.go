@@ -88,6 +88,6 @@ func (s *Config) Execute(ctx context.Context, log interface {
 		return fmt.Errorf("failed to execute screenshot configuration: %w", err)
 	}
 
-	log.Info("Screenshot configuration applied successfully")
+	log.Debug("Screenshot configuration applied successfully")
 	return nil
 }

@@ -138,3 +138,21 @@ func DefaultSearchScopeAliases() []string {
 	}
 	return aliases
 }
+
+func (p *PreferredViewStyle) UnmarshalText(text []byte) error {
+	parsed, err := ParsePreferredViewStyle(string(text))
+	if err != nil {
+		return err
+	}
+	*p = parsed
+	return nil
+}
+
+func (s *DefaultSearchScope) UnmarshalText(text []byte) error {
+	parsed, err := ParseDefaultSearchScope(string(text))
+	if err != nil {
+		return err
+	}
+	*s = parsed
+	return nil
+}

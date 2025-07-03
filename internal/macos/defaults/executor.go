@@ -27,7 +27,10 @@ type Command struct {
 	Value  Value
 }
 
-func (c *Command) Execute(ctx context.Context, log interface{ Info(string, ...any); Debug(string, ...any) }) error {
+func (c *Command) Execute(ctx context.Context, log interface {
+	Info(string, ...any)
+	Debug(string, ...any)
+}) error {
 	if err := c.Value.Validate(); err != nil {
 		return errors.NewValidationError(c.Key, c.Value, "", err)
 	}
@@ -38,14 +41,14 @@ func (c *Command) Execute(ctx context.Context, log interface{ Info(string, ...an
 
 	args := []string{"write", c.Domain, c.Key, string(c.Value.Type()), c.Value.String()}
 	cmd := exec.CommandContext(ctx, "defaults", args...)
-	
-	log.Info("Executing defaults command", 
-		"domain", c.Domain, 
-		"key", c.Key, 
-		"type", string(c.Value.Type()), 
+
+	log.Debug("Executing defaults command",
+		"domain", c.Domain,
+		"key", c.Key,
+		"type", string(c.Value.Type()),
 		"value", c.Value.String(),
 		"command", fmt.Sprintf("defaults %s", strings.Join(args, " ")))
-	
+
 	if err := cmd.Run(); err != nil {
 		return errors.NewExecutionError("defaults", args, err)
 	}
@@ -53,15 +56,18 @@ func (c *Command) Execute(ctx context.Context, log interface{ Info(string, ...an
 	return nil
 }
 
-func (c *Command) executeReset(ctx context.Context, log interface{ Info(string, ...any); Debug(string, ...any) }) error {
+func (c *Command) executeReset(ctx context.Context, log interface {
+	Info(string, ...any)
+	Debug(string, ...any)
+}) error {
 	args := []string{"delete", c.Domain, c.Key}
 	cmd := exec.CommandContext(ctx, "defaults", args...)
-	
-	log.Info("Resetting default to system value", 
-		"domain", c.Domain, 
+
+	log.Debug("Resetting default to system value",
+		"domain", c.Domain,
 		"key", c.Key,
 		"command", fmt.Sprintf("defaults %s", strings.Join(args, " ")))
-	
+
 	if err := cmd.Run(); err != nil {
 		log.Debug("Reset failed (key may not exist)", "error", err)
 	}
@@ -97,7 +103,7 @@ func (b *BatchExecutor) AddString(domain, key string, value string) {
 	})
 }
 
-func (b *BatchExecutor) AddInt(domain, key string, value interface{}) error {
+func (b *BatchExecutor) AddInt(domain, key string, value any) error {
 	intValue, err := NewIntValue(value)
 	if err != nil {
 		return fmt.Errorf("failed to create int value for %s.%s: %w", domain, key, err)
@@ -110,7 +116,7 @@ func (b *BatchExecutor) AddInt(domain, key string, value interface{}) error {
 	return nil
 }
 
-func (b *BatchExecutor) AddFloat(domain, key string, value interface{}) error {
+func (b *BatchExecutor) AddFloat(domain, key string, value any) error {
 	floatValue, err := NewFloatValue(value)
 	if err != nil {
 		return fmt.Errorf("failed to create float value for %s.%s: %w", domain, key, err)
@@ -123,7 +129,10 @@ func (b *BatchExecutor) AddFloat(domain, key string, value interface{}) error {
 	return nil
 }
 
-func (b *BatchExecutor) Execute(ctx context.Context, log interface{ Info(string, ...any); Debug(string, ...any) }) error {
+func (b *BatchExecutor) Execute(ctx context.Context, log interface {
+	Info(string, ...any)
+	Debug(string, ...any)
+}) error {
 	for _, cmd := range b.commands {
 		if err := cmd.Execute(ctx, log); err != nil {
 			return fmt.Errorf("batch execution failed: %w", err)
@@ -147,4 +156,17 @@ func (k *KillallExecutor) Execute(ctx context.Context) error {
 		return errors.NewExecutionError("killall", args, err)
 	}
 	return nil
+}
+
+func (k *KillallExecutor) ExecuteIfRunning(ctx context.Context) error {
+	if !k.isProcessRunning(ctx) {
+		return nil
+	}
+	return k.Execute(ctx)
+}
+
+func (k *KillallExecutor) isProcessRunning(ctx context.Context) bool {
+	cmd := exec.CommandContext(ctx, "pgrep", "-x", k.processName)
+	err := cmd.Run()
+	return err == nil
 }

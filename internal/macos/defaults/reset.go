@@ -90,7 +90,7 @@ func (r *ResetFloatValue) Validate() error {
 	return nil
 }
 
-func NewValueOrReset(value interface{}, valueType ValueType, isNull bool) (Value, error) {
+func NewValueOrReset(value any, valueType ValueType, isNull bool) (Value, error) {
 	if isNull {
 		switch valueType {
 		case BoolType:

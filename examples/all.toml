@@ -1,0 +1,48 @@
+version = 1
+
+[macos.dock]
+autohide = false
+orientation = "bottom"
+tilesize = 48
+autohide-time = 0.5
+autohide-delay = 0.2
+show-recents = true
+min-effect = "genie"
+static-only = false
+scroll-to-open = false
+
+[macos.finder]
+show-all-extensions = false
+show-all-files = false
+show-path-bar = false
+preferred-view-style = "icon"
+sort-folders-first = false
+finder-spawn-tab = true
+default-search-scope = "mac"
+remove-old-trash-items = false
+show-extension-change-warning = true
+save-new-docs-to-cloud = true
+show-window-titlebar-icons = false
+toolbar-title-view-rollover-delay = 0.5
+table-view-default-size-mode = 2
+
+[macos.safari]
+show-full-url = false
+
+[macos.screenshots]
+disable-shadow = false
+include-date = true
+save-location = "~/Desktop"
+show-thumbnail = true
+format = "png"
+
+[macos.desktop]
+sort-folders-first = false
+show-icons = true
+show-hard-drives = false
+show-external-hard-drives = true
+show-removable-media = true
+show-mounted-servers = false
+
+[macos.defaultsRaw]
+"com.apple.Music.userWantsPlaybackNotifications" = { value = true, type = "bool" }

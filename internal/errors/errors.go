@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -44,7 +45,7 @@ func (e *ConfigurationError) Unwrap() error {
 	return e.Err
 }
 
-func NewConfigurationError(component, operation, field string, value interface{}, err error) *ConfigurationError {
+func NewConfigurationError(component, operation, field string, value any, err error) *ConfigurationError {
 	return &ConfigurationError{
 		Component: component,
 		Operation: operation,
@@ -56,7 +57,7 @@ func NewConfigurationError(component, operation, field string, value interface{}
 
 type ValidationError struct {
 	Field    string
-	Value    interface{}
+	Value    any
 	Expected string
 	Err      error
 }
@@ -74,7 +75,7 @@ func (e *ValidationError) Unwrap() error {
 	return e.Err
 }
 
-func NewValidationError(field string, value interface{}, expected string, err error) *ValidationError {
+func NewValidationError(field string, value any, expected string, err error) *ValidationError {
 	return &ValidationError{
 		Field:    field,
 		Value:    value,
@@ -107,4 +108,95 @@ func NewExecutionError(command string, arguments []string, err error) *Execution
 		Arguments: arguments,
 		Err:       err,
 	}
+}
+
+type MultiError struct {
+	Errors []error
+}
+
+func (e *MultiError) Error() string {
+	if len(e.Errors) == 0 {
+		return "no errors"
+	}
+	
+	if len(e.Errors) == 1 {
+		return e.Errors[0].Error()
+	}
+	
+	var messages []string
+	for i, err := range e.Errors {
+		messages = append(messages, fmt.Sprintf("[%d] %s", i+1, err.Error()))
+	}
+	
+	return fmt.Sprintf("multiple errors occurred: %s", strings.Join(messages, "; "))
+}
+
+func (e *MultiError) Unwrap() []error {
+	return e.Errors
+}
+
+func (e *MultiError) Add(err error) {
+	if err != nil {
+		e.Errors = append(e.Errors, err)
+	}
+}
+
+func (e *MultiError) HasErrors() bool {
+	return len(e.Errors) > 0
+}
+
+func (e *MultiError) ToError() error {
+	if !e.HasErrors() {
+		return nil
+	}
+	return e
+}
+
+func NewMultiError(errs ...error) *MultiError {
+	me := &MultiError{}
+	for _, err := range errs {
+		me.Add(err)
+	}
+	return me
+}
+
+func Combine(errs ...error) error {
+	me := NewMultiError(errs...)
+	return me.ToError()
+}
+
+func IsConfigurationError(err error) bool {
+	var configErr *ConfigurationError
+	return errors.As(err, &configErr)
+}
+
+func IsValidationError(err error) bool {
+	var validErr *ValidationError
+	return errors.As(err, &validErr)
+}
+
+func IsExecutionError(err error) bool {
+	var execErr *ExecutionError
+	return errors.As(err, &execErr)
+}
+
+func WrapConfigError(component, operation, field string, value any, err error) error {
+	if err == nil {
+		return nil
+	}
+	return NewConfigurationError(component, operation, field, value, err)
+}
+
+func WrapValidationError(field string, value any, expected string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return NewValidationError(field, value, expected, err)
+}
+
+func WrapExecutionError(command string, arguments []string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return NewExecutionError(command, arguments, err)
 }

@@ -164,12 +164,16 @@ func (r Raw) Validate() error {
 	return nil
 }
 
-func (r Raw) Execute(ctx context.Context, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) error {
+func (r Raw) Execute(ctx context.Context, log interface {
+	Info(string, ...any)
+	Debug(string, ...any)
+	Warn(string, ...any)
+}) error {
 	if len(r) == 0 {
 		log.Debug("No raw defaults to apply")
 		return nil
 	}
-	
+
 	log.Debug("Processing raw defaults", "count", len(r))
 	batch := NewBatchExecutor()
 
@@ -179,7 +183,7 @@ func (r Raw) Execute(ctx context.Context, log interface{ Info(string, ...any); D
 		if len(domainParts) < 2 {
 			return fmt.Errorf("invalid domain format %s, expected format: com.apple.domain.key", domainKey)
 		}
-		
+
 		key := domainParts[len(domainParts)-1]
 		macosDomain := strings.Join(domainParts[:len(domainParts)-1], ".")
 		log.Debug("Parsed domain and key", "domain", macosDomain, "key", key)
@@ -250,6 +254,6 @@ func (r Raw) Execute(ctx context.Context, log interface{ Info(string, ...any); D
 		return fmt.Errorf("failed to execute raw defaults: %w", err)
 	}
 
-	log.Info("Raw defaults applied successfully", "count", len(r))
+	log.Debug("Raw defaults applied successfully", "count", len(r))
 	return nil
 }

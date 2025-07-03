@@ -50,10 +50,10 @@ func (s *Config) Execute(ctx context.Context, log interface {
 
 	log.Debug("Restarting safari to apply changes")
 	killall := defaults.NewKillallExecutor("Safari")
-	if err := killall.Execute(ctx); err != nil {
+	if err := killall.ExecuteIfRunning(ctx); err != nil {
 		return fmt.Errorf("failed to restart safari: %w", err)
 	}
 
-	log.Info("Safari configuration applied successfully")
+	log.Debug("Safari configuration applied successfully")
 	return nil
 }

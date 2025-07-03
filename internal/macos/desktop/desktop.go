@@ -88,6 +88,6 @@ func (d *Config) Execute(ctx context.Context, log interface {
 		return fmt.Errorf("failed to restart finder: %w", err)
 	}
 
-	log.Info("Desktop configuration applied successfully")
+	log.Debug("Desktop configuration applied successfully")
 	return nil
 }

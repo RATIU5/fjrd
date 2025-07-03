@@ -2,6 +2,7 @@ package defaults
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 )
 
@@ -85,9 +86,9 @@ type IntValue struct {
 	Value int64
 }
 
-func NewIntValue(value interface{}) (*IntValue, error) {
+func NewIntValue(value any) (*IntValue, error) {
 	var intVal int64
-	
+
 	switch v := value.(type) {
 	case int:
 		intVal = int64(v)
@@ -115,7 +116,7 @@ func NewIntValue(value interface{}) (*IntValue, error) {
 	default:
 		return nil, fmt.Errorf("cannot convert %T to int", value)
 	}
-	
+
 	return &IntValue{Value: intVal}, nil
 }
 
@@ -132,17 +133,17 @@ func (i *IntValue) Validate() error {
 }
 
 type FloatValue struct {
-	Value    float64
+	Value     float64
 	Precision int
 }
 
-func NewFloatValue(value interface{}) (*FloatValue, error) {
+func NewFloatValue(value any) (*FloatValue, error) {
 	return NewFloatValueWithPrecision(value, 2)
 }
 
-func NewFloatValueWithPrecision(value interface{}, precision int) (*FloatValue, error) {
+func NewFloatValueWithPrecision(value any, precision int) (*FloatValue, error) {
 	var floatVal float64
-	
+
 	switch v := value.(type) {
 	case float32:
 		floatVal = float64(v)
@@ -161,11 +162,11 @@ func NewFloatValueWithPrecision(value interface{}, precision int) (*FloatValue, 
 	default:
 		return nil, fmt.Errorf("cannot convert %T to float", value)
 	}
-	
+
 	if precision < 0 {
 		precision = 2
 	}
-	
+
 	return &FloatValue{Value: floatVal, Precision: precision}, nil
 }
 
@@ -202,10 +203,8 @@ func (e *EnumValue) String() string {
 }
 
 func (e *EnumValue) Validate() error {
-	for _, allowed := range e.AllowedValues {
-		if e.Value == allowed {
-			return nil
-		}
+	if slices.Contains(e.AllowedValues, e.Value) {
+		return nil
 	}
 	return fmt.Errorf("value %q is not allowed, must be one of: %v", e.Value, e.AllowedValues)
 }
@@ -216,32 +215,32 @@ func NewValueFactory() *ValueFactory {
 	return &ValueFactory{}
 }
 
-func (f *ValueFactory) CreateValue(value interface{}, valueType ValueType) (Value, error) {
+func (f *ValueFactory) CreateValue(value any, valueType ValueType) (Value, error) {
 	switch valueType {
 	case BoolType:
 		if b, ok := value.(bool); ok {
 			return NewBoolValue(b), nil
 		}
 		return nil, fmt.Errorf("expected bool, got %T", value)
-	
+
 	case StringType:
 		if s, ok := value.(string); ok {
 			return NewStringValue(s), nil
 		}
 		return nil, fmt.Errorf("expected string, got %T", value)
-	
+
 	case IntType:
 		return NewIntValue(value)
-	
+
 	case FloatType:
 		return NewFloatValue(value)
-	
+
 	default:
 		return nil, fmt.Errorf("unsupported value type: %s", valueType)
 	}
 }
 
-func (f *ValueFactory) CreateValueWithReset(value interface{}, valueType ValueType, isNull bool) (Value, error) {
+func (f *ValueFactory) CreateValueWithReset(value any, valueType ValueType, isNull bool) (Value, error) {
 	if isNull {
 		switch valueType {
 		case BoolType:

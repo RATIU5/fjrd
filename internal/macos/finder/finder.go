@@ -171,6 +171,6 @@ func (f *Config) Execute(ctx context.Context, log interface {
 		return fmt.Errorf("failed to restart finder: %w", err)
 	}
 
-	log.Info("Finder configuration applied successfully")
+	log.Debug("Finder configuration applied successfully")
 	return nil
 }

@@ -1,7 +1,0 @@
-version = 1
-
-[macos.dock]
-
-[macos.defaultsRaw]
-# Reset using explicit flag
-"com.apple.dock.expose-animation-duration" = { value = 0.1, type = "float", reset = true }

@@ -90,7 +90,11 @@ func getLocalTomlFile(path string) (string, error) {
 	return string(body), nil
 }
 
-func getNetworkTomlResource(ctx context.Context, path string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) (string, error) {
+func getNetworkTomlResource(ctx context.Context, path string, log interface {
+	Info(string, ...any)
+	Debug(string, ...any)
+	Warn(string, ...any)
+}) (string, error) {
 	u, err := url.Parse(path)
 	if err != nil {
 		return "", errors.New("failed to parse url")
@@ -127,7 +131,11 @@ func getNetworkTomlResource(ctx context.Context, path string, log interface{ Inf
 	return "", errors.New("failed to retrieve the network resource contents")
 }
 
-func getHTTPSTomlResource(ctx context.Context, urlStr string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) (string, error) {
+func getHTTPSTomlResource(ctx context.Context, urlStr string, log interface {
+	Info(string, ...any)
+	Debug(string, ...any)
+	Warn(string, ...any)
+}) (string, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -230,7 +238,11 @@ func convertGitHubBlobToRaw(urlStr string) string {
 	return fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/%s", owner, repo, commit, filePath)
 }
 
-func getGitTomlResource(ctx context.Context, path string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) (string, error) {
+func getGitTomlResource(ctx context.Context, path string, log interface {
+	Info(string, ...any)
+	Debug(string, ...any)
+	Warn(string, ...any)
+}) (string, error) {
 	log.Debug("Parsing Git path", "path", path)
 	gitPath := parseGitPath(ctx, path, log)
 	if gitPath == "" {
@@ -292,7 +304,11 @@ func getDefaultBranch(ctx context.Context, owner, repo string) string {
 	return ""
 }
 
-func parseGitPath(ctx context.Context, path string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) string {
+func parseGitPath(ctx context.Context, path string, log interface {
+	Info(string, ...any)
+	Debug(string, ...any)
+	Warn(string, ...any)
+}) string {
 	cleanPath := strings.TrimPrefix(path, "git://")
 	cleanPath = strings.TrimPrefix(cleanPath, "https://")
 	cleanPath = strings.TrimPrefix(cleanPath, "github.com/")
@@ -321,7 +337,7 @@ func parseGitPath(ctx context.Context, path string, log interface{ Info(string, 
 			for _, file := range commonFiles {
 				testURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/%s%s", owner, repo, defaultBranch, searchPath, file)
 				log.Debug("Testing config file location", "url", testURL)
-				
+
 				req, err := http.NewRequestWithContext(ctx, "HEAD", testURL, nil)
 				if err != nil {
 					continue
@@ -357,12 +373,16 @@ func parseGitPath(ctx context.Context, path string, log interface{ Info(string, 
 	return ""
 }
 
-func LoadConfig(ctx context.Context, location string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) (*FjrdConfig, error) {
-	log.Info("Loading configuration", "location", location)
-	
+func LoadConfig(ctx context.Context, location string, log interface {
+	Info(string, ...any)
+	Debug(string, ...any)
+	Warn(string, ...any)
+}) (*FjrdConfig, error) {
+	log.Debug("Loading configuration", "location", location)
+
 	pathType := determinePathType(location)
 	log.Debug("Determined path type", "type", pathType.String(), "location", location)
-	
+
 	content, err := resolveTomlResource(ctx, location, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve config location: %w", err)
@@ -375,11 +395,15 @@ func LoadConfig(ctx context.Context, location string, log interface{ Info(string
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	log.Info("Configuration parsed successfully", "version", cfg.Version)
+	log.Debug("Configuration parsed successfully", "version", cfg.Version)
 	return &cfg, nil
 }
 
-func resolveTomlResource(ctx context.Context, location string, log interface{ Info(string, ...any); Debug(string, ...any); Warn(string, ...any) }) (string, error) {
+func resolveTomlResource(ctx context.Context, location string, log interface {
+	Info(string, ...any)
+	Debug(string, ...any)
+	Warn(string, ...any)
+}) (string, error) {
 	pathType := determinePathType(location)
 	switch pathType {
 	case PathTypeLocal:
@@ -391,12 +415,12 @@ func resolveTomlResource(ctx context.Context, location string, log interface{ In
 		log.Debug("Local file read successfully", "size", len(tomlBody))
 		return tomlBody, nil
 	case PathTypeNetwork:
-		log.Info("Fetching remote configuration", "url", location)
+		log.Debug("Fetching remote configuration", "url", location)
 		tomlBody, err := getNetworkTomlResource(ctx, location, log)
 		if err != nil {
 			return "", errors.New("failed to read remote toml file")
 		}
-		log.Info("Remote configuration fetched successfully", "size", len(tomlBody))
+		log.Debug("Remote configuration fetched successfully", "size", len(tomlBody))
 		return tomlBody, nil
 	case PathTypeNonExistent:
 		return "", errors.New("failed to read location path")

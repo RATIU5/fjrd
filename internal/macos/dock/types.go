@@ -5,19 +5,19 @@ import (
 	"strings"
 )
 
-type Position string
-type MinEffect string
+type Position int
+type MinEffect int
 
 const (
-	PositionLeft   Position = "left"
-	PositionBottom Position = "bottom"
-	PositionRight  Position = "right"
+	PositionLeft Position = iota
+	PositionBottom
+	PositionRight
 )
 
 const (
-	EffectGenie MinEffect = "genie"
-	EffectScale MinEffect = "scale"
-	EffectSuck  MinEffect = "suck"
+	EffectGenie MinEffect = iota
+	EffectScale
+	EffectSuck
 )
 
 func (p Position) IsValid() bool {
@@ -30,7 +30,29 @@ func (p Position) IsValid() bool {
 }
 
 func (p Position) String() string {
-	return string(p)
+	switch p {
+	case PositionLeft:
+		return "left"
+	case PositionBottom:
+		return "bottom"
+	case PositionRight:
+		return "right"
+	default:
+		return "bottom"
+	}
+}
+
+func (p *Position) UnmarshalText(text []byte) error {
+	parsed, err := ParsePosition(string(text))
+	if err != nil {
+		return err
+	}
+	*p = parsed
+	return nil
+}
+
+func (p Position) MarshalText() ([]byte, error) {
+	return []byte(p.String()), nil
 }
 
 func (e MinEffect) IsValid() bool {
@@ -43,23 +65,55 @@ func (e MinEffect) IsValid() bool {
 }
 
 func (e MinEffect) String() string {
-	return string(e)
+	switch e {
+	case EffectGenie:
+		return "genie"
+	case EffectScale:
+		return "scale"
+	case EffectSuck:
+		return "suck"
+	default:
+		return "genie"
+	}
+}
+
+func (e *MinEffect) UnmarshalText(text []byte) error {
+	parsed, err := ParseMinEffect(string(text))
+	if err != nil {
+		return err
+	}
+	*e = parsed
+	return nil
+}
+
+func (e MinEffect) MarshalText() ([]byte, error) {
+	return []byte(e.String()), nil
 }
 
 func ParsePosition(s string) (Position, error) {
-	pos := Position(strings.ToLower(s))
-	if !pos.IsValid() {
-		return "", fmt.Errorf("invalid dock position %q, must be one of: left, bottom, right", s)
+	switch strings.ToLower(s) {
+	case "left":
+		return PositionLeft, nil
+	case "bottom":
+		return PositionBottom, nil
+	case "right":
+		return PositionRight, nil
+	default:
+		return PositionBottom, fmt.Errorf("invalid dock position %q, must be one of: left, bottom, right", s)
 	}
-	return pos, nil
 }
 
 func ParseMinEffect(s string) (MinEffect, error) {
-	effect := MinEffect(strings.ToLower(s))
-	if !effect.IsValid() {
-		return "", fmt.Errorf("invalid dock effect %q, must be one of: genie, scale, suck", s)
+	switch strings.ToLower(s) {
+	case "genie":
+		return EffectGenie, nil
+	case "scale":
+		return EffectScale, nil
+	case "suck":
+		return EffectSuck, nil
+	default:
+		return EffectGenie, fmt.Errorf("invalid dock effect %q, must be one of: genie, scale, suck", s)
 	}
-	return effect, nil
 }
 
 func AllPositions() []Position {
