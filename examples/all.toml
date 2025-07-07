@@ -52,5 +52,16 @@ clock-date-format = "EEE d MMM HH:mm"
 accelerate = true
 speed = 1
 
+[macos.trackpad]
+click-weight = 1
+three-finger-drag = false
+
+[macos.keyboard]
+key-hold-shows-accents = true
+fn-key-behavior = "none"
+special-f-keys = false
+tab-navigation = false
+language-indicator = true
+
 [macos.defaultsRaw]
 "com.apple.Music.userWantsPlaybackNotifications" = { value = true, type = "bool" }

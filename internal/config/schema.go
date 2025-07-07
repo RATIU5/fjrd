@@ -10,10 +10,12 @@ import (
 	"github.com/RATIU5/fjrd/internal/macos/desktop"
 	"github.com/RATIU5/fjrd/internal/macos/dock"
 	"github.com/RATIU5/fjrd/internal/macos/finder"
+	"github.com/RATIU5/fjrd/internal/macos/keyboard"
 	"github.com/RATIU5/fjrd/internal/macos/menubar"
 	"github.com/RATIU5/fjrd/internal/macos/mouse"
 	"github.com/RATIU5/fjrd/internal/macos/safari"
 	"github.com/RATIU5/fjrd/internal/macos/screenshots"
+	"github.com/RATIU5/fjrd/internal/macos/trackpad"
 	"github.com/RATIU5/fjrd/internal/shared"
 )
 
@@ -25,6 +27,8 @@ type MacosConfig struct {
 	Screenshots screenshots.Config `toml:"screenshots"`
 	Menubar     menubar.Config     `toml:"meubar"`
 	Mouse       mouse.Config       `toml:"mouse"`
+	Trackpad    trackpad.Config    `toml:"trackpad"`
+	Keyboard    keyboard.Config    `toml:"keyboard"`
 	DefaultsRaw defaults.Raw       `toml:"defaultsRaw"`
 }
 
@@ -46,6 +50,8 @@ func (m *MacosConfig) Fields() map[string]any {
 		"screenshots": m.Screenshots,
 		"menubar":     m.Menubar,
 		"mouse":       m.Mouse,
+		"trackpad":    m.Trackpad,
+		"keyboard":    m.Keyboard,
 		"defaultsRaw": m.DefaultsRaw,
 	}
 }
@@ -70,6 +76,8 @@ func (c *MacosConfig) Validate() error {
 		&c.Screenshots,
 		&c.Menubar,
 		&c.Mouse,
+		&c.Trackpad,
+		&c.Keyboard,
 		&c.DefaultsRaw,
 	)
 }
@@ -108,6 +116,14 @@ func (c *MacosConfig) Execute(ctx context.Context, log *logger.Logger) error {
 
 	if err := c.Mouse.Execute(ctx, log); err != nil {
 		multiErr.Add(errors.WrapConfigError("macos", "execute", "mouse", nil, err))
+	}
+
+	if err := c.Trackpad.Execute(ctx, log); err != nil {
+		multiErr.Add(errors.WrapConfigError("macos", "execute", "trackpad", nil, err))
+	}
+
+	if err := c.Keyboard.Execute(ctx, log); err != nil {
+		multiErr.Add(errors.WrapConfigError("macos", "execute", "keyboard", nil, err))
 	}
 
 	if err := c.DefaultsRaw.Execute(ctx, log); err != nil {
