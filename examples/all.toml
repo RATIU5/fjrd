@@ -63,5 +63,11 @@ special-f-keys = false
 tab-navigation = false
 language-indicator = true
 
+[macos.mission-control]
+auto-rearrange-spaces = true
+group-windows-by-app = false
+switch-to-apps-open-window = true
+displays-have-separate-spaces = false
+
 [macos.defaultsRaw]
 "com.apple.Music.userWantsPlaybackNotifications" = { value = true, type = "bool" }

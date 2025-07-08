@@ -2,10 +2,11 @@ package desktop
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
+	"github.com/RATIU5/fjrd/internal/errors"
+	"github.com/RATIU5/fjrd/internal/logger"
 	"github.com/RATIU5/fjrd/internal/macos/defaults"
+	"github.com/RATIU5/fjrd/internal/shared"
 )
 
 type Config struct {
@@ -22,39 +23,39 @@ func (d *Config) Validate() error {
 }
 
 func (d *Config) String() string {
-	var parts []string
-	if d.SortFoldersFirst != nil {
-		parts = append(parts, fmt.Sprintf("sort-folders-first: %t", *d.SortFoldersFirst))
-	}
-	if d.ShowIcons != nil {
-		parts = append(parts, fmt.Sprintf("show-icons: %t", *d.ShowIcons))
-	}
-	if d.ShowHardDrives != nil {
-		parts = append(parts, fmt.Sprintf("show-hard-drives: %t", *d.ShowHardDrives))
-	}
-	if d.ShowExternalHardDrives != nil {
-		parts = append(parts, fmt.Sprintf("show-external-hard-drives, %t", *d.ShowExternalHardDrives))
-	}
-	if d.ShowRemovableMedia != nil {
-		parts = append(parts, fmt.Sprintf("show-removable-media: %t", *d.ShowRemovableMedia))
-	}
-	if d.ShowMountedServers != nil {
-		parts = append(parts, fmt.Sprintf("show-mounted-servers: %t", *d.ShowMountedServers))
-	}
-
-	if len(parts) == 0 {
-		return "Desktop{}"
-	}
-
-	return fmt.Sprintf("Desktop{%s}", strings.Join(parts, ", "))
+	return shared.FormatConfig("Desktop", d)
 }
 
-func (d *Config) Execute(ctx context.Context, log interface {
-	Info(string, ...any)
-	Debug(string, ...any)
-	Warn(string, ...any)
-}) error {
+func (d *Config) Fields() map[string]any {
+	fields := make(map[string]any)
+
+	if d.SortFoldersFirst != nil {
+		fields["sort-folders-first"] = *d.SortFoldersFirst
+	}
+	if d.ShowIcons != nil {
+		fields["show-icons"] = *d.ShowIcons
+	}
+	if d.ShowHardDrives != nil {
+		fields["show-hard-drives"] = *d.ShowHardDrives
+	}
+	if d.ShowExternalHardDrives != nil {
+		fields["show-external-hard-drives"] = *d.ShowExternalHardDrives
+	}
+	if d.ShowRemovableMedia != nil {
+		fields["show-removable-media"] = *d.ShowRemovableMedia
+	}
+	if d.ShowMountedServers != nil {
+		fields["show-mounted-servers"] = *d.ShowMountedServers
+	}
+
+	return fields
+}
+
+func (d *Config) Execute(ctx context.Context, log *logger.Logger) error {
+	log = log.WithComponent("desktop")
 	log.Debug("Configuring desktop settings")
+
+	multiErr := &errors.MultiError{}
 	batch := defaults.NewBatchExecutor()
 	const finderDomain = "com.apple.finder"
 
@@ -79,13 +80,17 @@ func (d *Config) Execute(ctx context.Context, log interface {
 
 	log.Debug("Applying desktop defaults")
 	if err := batch.Execute(ctx, log); err != nil {
-		return fmt.Errorf("failed to execute desktop configuration: %w", err)
+		multiErr.Add(errors.WrapConfigError("desktop", "batch_execute", "desktop_defaults", nil, err))
+	}
+
+	if err := multiErr.ToError(); err != nil {
+		return err
 	}
 
 	log.Debug("Restarting Finder to apply changes")
 	killall := defaults.NewKillallExecutor("Finder")
 	if err := killall.Execute(ctx); err != nil {
-		return fmt.Errorf("failed to restart finder: %w", err)
+		return errors.WrapConfigError("desktop", "restart", "finder_process", nil, err)
 	}
 
 	log.Debug("Desktop configuration applied successfully")

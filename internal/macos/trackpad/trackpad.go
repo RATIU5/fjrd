@@ -16,7 +16,7 @@ type Config struct {
 }
 
 func (t *Config) Validate() error {
-	if *t.ClickWeight < 0 || *t.ClickWeight > 3 {
+	if t.ClickWeight != nil && (*t.ClickWeight < 0 || *t.ClickWeight > 3) {
 		return fmt.Errorf("invalid click-weight value: %d", *t.ClickWeight)
 	}
 	return nil

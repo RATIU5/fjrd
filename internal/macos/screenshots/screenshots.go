@@ -3,9 +3,11 @@ package screenshots
 import (
 	"context"
 	"fmt"
-	"strings"
 
+	"github.com/RATIU5/fjrd/internal/errors"
+	"github.com/RATIU5/fjrd/internal/logger"
 	"github.com/RATIU5/fjrd/internal/macos/defaults"
+	"github.com/RATIU5/fjrd/internal/shared"
 )
 
 type Config struct {
@@ -18,43 +20,42 @@ type Config struct {
 
 func (s *Config) Validate() error {
 	if s.Format != nil && !s.Format.IsValid() {
-		return fmt.Errorf("invalid format: %s", *s.Format)
+		return errors.WrapConfigError("screenshots", "validate", "format", *s.Format, fmt.Errorf("invalid format: %s", *s.Format))
 	}
 	return nil
 }
 
 func (s *Config) String() string {
-	var parts []string
-
-	if s.DisableShadow != nil {
-		parts = append(parts, fmt.Sprintf("disable-shadow: %t", *s.DisableShadow))
-	}
-	if s.IncludeDate != nil {
-		parts = append(parts, fmt.Sprintf("include-date: %t", *s.IncludeDate))
-	}
-	if s.SaveLocation != nil {
-		parts = append(parts, fmt.Sprintf("save-location: %s", *s.SaveLocation))
-	}
-	if s.ShowThumbnail != nil {
-		parts = append(parts, fmt.Sprintf("show-thumbnail: %t", *s.ShowThumbnail))
-	}
-	if s.Format != nil {
-		parts = append(parts, fmt.Sprintf("format: %s", s.Format.String()))
-	}
-
-	if len(parts) == 0 {
-		return "Screenshot{}"
-	}
-
-	return fmt.Sprintf("Screenshot{%s}", strings.Join(parts, " ,"))
+	return shared.FormatConfig("Screenshots", s)
 }
 
-func (s *Config) Execute(ctx context.Context, log interface {
-	Info(string, ...any)
-	Debug(string, ...any)
-	Warn(string, ...any)
-}) error {
+func (s *Config) Fields() map[string]any {
+	fields := make(map[string]any)
+
+	if s.DisableShadow != nil {
+		fields["disable-shadow"] = *s.DisableShadow
+	}
+	if s.IncludeDate != nil {
+		fields["include-date"] = *s.IncludeDate
+	}
+	if s.SaveLocation != nil {
+		fields["save-location"] = *s.SaveLocation
+	}
+	if s.ShowThumbnail != nil {
+		fields["show-thumbnail"] = *s.ShowThumbnail
+	}
+	if s.Format != nil {
+		fields["format"] = s.Format.String()
+	}
+
+	return fields
+}
+
+func (s *Config) Execute(ctx context.Context, log *logger.Logger) error {
+	log = log.WithComponent("screenshots")
 	log.Debug("Configuring screenshot settings")
+
+	multiErr := &errors.MultiError{}
 	batch := defaults.NewBatchExecutor()
 	const screenshotDomain = "com.apple.screencapture"
 
@@ -85,7 +86,11 @@ func (s *Config) Execute(ctx context.Context, log interface {
 
 	log.Debug("Applying screenshot defaults")
 	if err := batch.Execute(ctx, log); err != nil {
-		return fmt.Errorf("failed to execute screenshot configuration: %w", err)
+		multiErr.Add(errors.WrapConfigError("screenshots", "batch_execute", "screenshot_defaults", nil, err))
+	}
+
+	if err := multiErr.ToError(); err != nil {
+		return err
 	}
 
 	log.Debug("Screenshot configuration applied successfully")

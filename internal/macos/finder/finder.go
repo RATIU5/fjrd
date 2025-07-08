@@ -3,16 +3,18 @@ package finder
 import (
 	"context"
 	"fmt"
-	"strings"
 
+	"github.com/RATIU5/fjrd/internal/errors"
+	"github.com/RATIU5/fjrd/internal/logger"
 	"github.com/RATIU5/fjrd/internal/macos/defaults"
+	"github.com/RATIU5/fjrd/internal/shared"
 )
 
 type Config struct {
 	ShowAllExtensions             *bool               `toml:"show-all-extensions,omitempty"`
 	ShowAllFiles                  *bool               `toml:"show-all-files,omitempty"`
 	ShowPathBar                   *bool               `toml:"show-path-bar,omitempty"`
-	PreferredViewStyle            *PreferredViewStyle `toml:"preferred-view-style,omitmepty"`
+	PreferredViewStyle            *PreferredViewStyle `toml:"preferred-view-style,omitempty"`
 	SortFoldersFirst              *bool               `toml:"sort-folders-first,omitempty"`
 	FinderSpawnTab                *bool               `toml:"finder-spawn-tab,omitempty"`
 	DefaultSearchScope            *DefaultSearchScope `toml:"default-search-scope,omitempty"`
@@ -35,64 +37,65 @@ func (f *Config) Validate() error {
 }
 
 func (f *Config) String() string {
-	var parts []string
-	if f.ShowAllExtensions != nil {
-		parts = append(parts, fmt.Sprintf("show-all-extensions: %t", *f.ShowAllExtensions))
-	}
-	if f.ShowAllFiles != nil {
-		parts = append(parts, fmt.Sprintf("show-all-files: %t", *f.ShowAllFiles))
-	}
-	if f.ShowPathBar != nil {
-		parts = append(parts, fmt.Sprintf("show-path-bar: %t", *f.ShowPathBar))
-	}
-	if f.PreferredViewStyle != nil {
-		parts = append(parts, fmt.Sprintf("preferred-view-style: %s", *f.PreferredViewStyle))
-	}
-	if f.SortFoldersFirst != nil {
-		parts = append(parts, fmt.Sprintf("sort-folders-first: %t", *f.SortFoldersFirst))
-	}
-	if f.FinderSpawnTab != nil {
-		parts = append(parts, fmt.Sprintf("finder-spawn-tab: %t", *f.FinderSpawnTab))
-	}
-	if f.DefaultSearchScope != nil {
-		parts = append(parts, fmt.Sprintf("default-search-scope: %s", *f.DefaultSearchScope))
-	}
-	if f.RemoveOldTrashItems != nil {
-		parts = append(parts, fmt.Sprintf("remove-old-trash-items: %t", *f.RemoveOldTrashItems))
-	}
-	if f.ShowExtensionChangeWarning != nil {
-		parts = append(parts, fmt.Sprintf("show-extension-change-warning: %t", *f.ShowExtensionChangeWarning))
-	}
-	if f.SaveNewDocsToCloud != nil {
-		parts = append(parts, fmt.Sprintf("save-new-docs-to-cloud: %t", *f.SaveNewDocsToCloud))
-	}
-	if f.ShowWindowTitlebarIcons != nil {
-		parts = append(parts, fmt.Sprintf("show-window-titlebar-icons: %t", *f.ShowWindowTitlebarIcons))
-	}
-	if f.ToolbarTitleViewRolloverDelay != nil {
-		parts = append(parts, fmt.Sprintf("toolbar-title-view-rollover-delay: %.2f", *f.ToolbarTitleViewRolloverDelay))
-	}
-	if f.TableViewDefaultSizeMode != nil {
-		parts = append(parts, fmt.Sprintf("table-view-default-size-mode: %d", *f.TableViewDefaultSizeMode))
-	}
-
-	if len(parts) == 0 {
-		return "Finder{}"
-	}
-
-	return fmt.Sprintf("Finder{%s}", strings.Join(parts, ", "))
+	return shared.FormatConfig("Finder", f)
 }
 
-func (f *Config) Execute(ctx context.Context, log interface {
-	Info(string, ...any)
-	Debug(string, ...any)
-	Warn(string, ...any)
-}) error {
+func (f *Config) Fields() map[string]any {
+	fields := make(map[string]any)
+
+	if f.ShowAllExtensions != nil {
+		fields["show-all-extensions"] = f.ShowAllExtensions
+	}
+	if f.ShowAllFiles != nil {
+		fields["show-all-files"] = f.ShowAllFiles
+	}
+	if f.ShowPathBar != nil {
+		fields["show-path-bar"] = f.ShowPathBar
+	}
+	if f.PreferredViewStyle != nil {
+		fields["preferred-view-style"] = f.PreferredViewStyle
+	}
+	if f.SortFoldersFirst != nil {
+		fields["sort-folders-first"] = f.SortFoldersFirst
+	}
+	if f.FinderSpawnTab != nil {
+		fields["finder-spawn-tab"] = f.FinderSpawnTab
+	}
+	if f.DefaultSearchScope != nil {
+		fields["default-search-scope"] = f.DefaultSearchScope
+	}
+	if f.RemoveOldTrashItems != nil {
+		fields["remove-old-trash-items"] = f.RemoveOldTrashItems
+	}
+	if f.ShowExtensionChangeWarning != nil {
+		fields["show-extension-change-warning"] = f.ShowExtensionChangeWarning
+	}
+	if f.SaveNewDocsToCloud != nil {
+		fields["save-new-docs-to-cloud"] = f.SaveNewDocsToCloud
+	}
+	if f.ShowWindowTitlebarIcons != nil {
+		fields["show-window-titlebar-icons"] = f.ShowWindowTitlebarIcons
+	}
+	if f.ToolbarTitleViewRolloverDelay != nil {
+		fields["toolbar-title-view-rollover-delay"] = f.ToolbarTitleViewRolloverDelay
+	}
+	if f.TableViewDefaultSizeMode != nil {
+		fields["table-view-default-size-mode"] = f.TableViewDefaultSizeMode
+	}
+
+	return fields
+}
+
+func (f *Config) Execute(ctx context.Context, log *logger.Logger) error {
+	log = log.WithComponent("finder")
 	log.Debug("Configuring finder settings")
+
 	batch := defaults.NewBatchExecutor()
 	const finderDomain = "com.apple.finder"
 	const nsGlobalDomain = "NSGlobalDomain"
 	const universalDomain = "com.apple.universalaccess"
+
+	multiErr := errors.NewMultiError()
 
 	if f.ShowAllExtensions != nil {
 		batch.AddBool(nsGlobalDomain, "AppleShowAllExtensions", *f.ShowAllExtensions)
@@ -150,25 +153,29 @@ func (f *Config) Execute(ctx context.Context, log interface {
 
 	if f.ToolbarTitleViewRolloverDelay != nil {
 		if err := batch.AddFloat(nsGlobalDomain, "NSToolbarTitleViewRolloverDelay", *f.ToolbarTitleViewRolloverDelay); err != nil {
-			return fmt.Errorf("failed to add toolbar-title-view-rollover-delay command: %w", err)
+			multiErr.Add(errors.WrapConfigError("finder", "add_float", "NSToolbarTitleViewRolloverDelay", *f.ToolbarTitleViewRolloverDelay, err))
 		}
 	}
 
 	if f.TableViewDefaultSizeMode != nil {
 		if err := batch.AddInt(nsGlobalDomain, "NSTableViewDefaultSizeMode", *f.TableViewDefaultSizeMode); err != nil {
-			return fmt.Errorf("failed to add table-view-default-size-mode command: %w", err)
+			multiErr.Add(errors.WrapConfigError("finder", "add_int", "NSTableViewDefaultSizeMode", *f.TableViewDefaultSizeMode, err))
 		}
+	}
+
+	if err := multiErr.ToError(); err != nil {
+		return err
 	}
 
 	log.Debug("Applying finder defaults")
 	if err := batch.Execute(ctx, log); err != nil {
-		return fmt.Errorf("failed to execute finder configuration: %w", err)
+		return errors.WrapConfigError("finder", "execute_batch", "", nil, err)
 	}
 
 	log.Debug("Restarting Finder to apply changes")
 	killall := defaults.NewKillallExecutor("Finder")
 	if err := killall.Execute(ctx); err != nil {
-		return fmt.Errorf("failed to restart finder: %w", err)
+		return errors.WrapConfigError("finder", "restart_process", "Dock", nil, err)
 	}
 
 	log.Debug("Finder configuration applied successfully")

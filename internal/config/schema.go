@@ -12,6 +12,7 @@ import (
 	"github.com/RATIU5/fjrd/internal/macos/finder"
 	"github.com/RATIU5/fjrd/internal/macos/keyboard"
 	"github.com/RATIU5/fjrd/internal/macos/menubar"
+	"github.com/RATIU5/fjrd/internal/macos/missionControl"
 	"github.com/RATIU5/fjrd/internal/macos/mouse"
 	"github.com/RATIU5/fjrd/internal/macos/safari"
 	"github.com/RATIU5/fjrd/internal/macos/screenshots"
@@ -20,16 +21,17 @@ import (
 )
 
 type MacosConfig struct {
-	Dock        dock.Config        `toml:"dock"`
-	Finder      finder.Config      `toml:"finder"`
-	Desktop     desktop.Config     `toml:"desktop"`
-	Safari      safari.Config      `toml:"safari"`
-	Screenshots screenshots.Config `toml:"screenshots"`
-	Menubar     menubar.Config     `toml:"meubar"`
-	Mouse       mouse.Config       `toml:"mouse"`
-	Trackpad    trackpad.Config    `toml:"trackpad"`
-	Keyboard    keyboard.Config    `toml:"keyboard"`
-	DefaultsRaw defaults.Raw       `toml:"defaultsRaw"`
+	Dock           dock.Config           `toml:"dock"`
+	Finder         finder.Config         `toml:"finder"`
+	Desktop        desktop.Config        `toml:"desktop"`
+	Safari         safari.Config         `toml:"safari"`
+	Screenshots    screenshots.Config    `toml:"screenshots"`
+	Menubar        menubar.Config        `toml:"meubar"`
+	Mouse          mouse.Config          `toml:"mouse"`
+	Trackpad       trackpad.Config       `toml:"trackpad"`
+	Keyboard       keyboard.Config       `toml:"keyboard"`
+	MissionControl missionControl.Config `toml:"mission-control"`
+	DefaultsRaw    defaults.Raw          `toml:"defaultsRaw"`
 }
 
 type FjrdConfig struct {
@@ -43,16 +45,17 @@ func (m *MacosConfig) String() string {
 
 func (m *MacosConfig) Fields() map[string]any {
 	return map[string]any{
-		"dock":        m.Dock,
-		"finder":      m.Finder,
-		"desktop":     m.Desktop,
-		"safari":      m.Safari,
-		"screenshots": m.Screenshots,
-		"menubar":     m.Menubar,
-		"mouse":       m.Mouse,
-		"trackpad":    m.Trackpad,
-		"keyboard":    m.Keyboard,
-		"defaultsRaw": m.DefaultsRaw,
+		"dock":            m.Dock,
+		"finder":          m.Finder,
+		"desktop":         m.Desktop,
+		"safari":          m.Safari,
+		"screenshots":     m.Screenshots,
+		"menubar":         m.Menubar,
+		"mouse":           m.Mouse,
+		"trackpad":        m.Trackpad,
+		"keyboard":        m.Keyboard,
+		"mission-control": m.MissionControl,
+		"defaultsRaw":     m.DefaultsRaw,
 	}
 }
 
@@ -78,6 +81,7 @@ func (c *MacosConfig) Validate() error {
 		&c.Mouse,
 		&c.Trackpad,
 		&c.Keyboard,
+		&c.MissionControl,
 		&c.DefaultsRaw,
 	)
 }
@@ -124,6 +128,10 @@ func (c *MacosConfig) Execute(ctx context.Context, log *logger.Logger) error {
 
 	if err := c.Keyboard.Execute(ctx, log); err != nil {
 		multiErr.Add(errors.WrapConfigError("macos", "execute", "keyboard", nil, err))
+	}
+
+	if err := c.MissionControl.Execute(ctx, log); err != nil {
+		multiErr.Add(errors.WrapConfigError("macos", "execute", "mission-control", nil, err))
 	}
 
 	if err := c.DefaultsRaw.Execute(ctx, log); err != nil {

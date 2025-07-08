@@ -2,10 +2,11 @@ package safari
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
+	"github.com/RATIU5/fjrd/internal/errors"
+	"github.com/RATIU5/fjrd/internal/logger"
 	"github.com/RATIU5/fjrd/internal/macos/defaults"
+	"github.com/RATIU5/fjrd/internal/shared"
 )
 
 type Config struct {
@@ -17,25 +18,24 @@ func (s *Config) Validate() error {
 }
 
 func (s *Config) String() string {
-	var parts []string
-
-	if s.ShowFullUrl != nil {
-		parts = append(parts, fmt.Sprintf("show-full-url: %t", *s.ShowFullUrl))
-	}
-
-	if len(parts) == 0 {
-		return "Safari{}"
-	}
-
-	return fmt.Sprintf("Safari{%s}", strings.Join(parts, ", "))
+	return shared.FormatConfig("Safari", s)
 }
 
-func (s *Config) Execute(ctx context.Context, log interface {
-	Info(string, ...any)
-	Debug(string, ...any)
-	Warn(string, ...any)
-}) error {
+func (s *Config) Fields() map[string]any {
+	fields := make(map[string]any)
+
+	if s.ShowFullUrl != nil {
+		fields["show-full-url"] = *s.ShowFullUrl
+	}
+
+	return fields
+}
+
+func (s *Config) Execute(ctx context.Context, log *logger.Logger) error {
+	log = log.WithComponent("safari")
 	log.Debug("Configuring safari settings")
+
+	multiErr := &errors.MultiError{}
 	batch := defaults.NewBatchExecutor()
 	const safariDomain = "com.apple.Safari"
 
@@ -45,13 +45,17 @@ func (s *Config) Execute(ctx context.Context, log interface {
 
 	log.Debug("Applying safari defaults")
 	if err := batch.Execute(ctx, log); err != nil {
-		return fmt.Errorf("failed to execute safari configuration: %w", err)
+		multiErr.Add(errors.WrapConfigError("safari", "batch_execute", "safari_defaults", nil, err))
+	}
+
+	if err := multiErr.ToError(); err != nil {
+		return err
 	}
 
 	log.Debug("Restarting safari to apply changes")
 	killall := defaults.NewKillallExecutor("Safari")
 	if err := killall.ExecuteIfRunning(ctx); err != nil {
-		return fmt.Errorf("failed to restart safari: %w", err)
+		return errors.WrapConfigError("safari", "restart", "safari_process", nil, err)
 	}
 
 	log.Debug("Safari configuration applied successfully")
