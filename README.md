@@ -2,6 +2,9 @@
 
 A declarative macOS configuration management tool that applies system settings through simple TOML files. Configure your entire macOS environment with version-controlled settings that can be easily shared, replicated, and applied across multiple machines.
 
+> [!NOTE]
+> fjrd is officially in beta!
+
 ## What is fjrd?
 
 **fjrd** (pronounced "ford") is a command-line tool that bridges the gap between macOS's powerful `defaults` system and user-friendly configuration management. Instead of remembering dozens of cryptic `defaults write` commands, you define your desired macOS settings in a clean TOML file and let fjrd handle the complex system interactions.
